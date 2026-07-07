@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pilihan yang Sulit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241a2e;
+    --plum:#2b1e3a;
+    --indigo:#3d3a63;
+    --amber:#ffcf87;
+    --amber2:#f0a868;
+    --rose:#d98c9a;
+    --sage:#6fae9a;
+    --denim:#6f9bd8;
+    --cream:#f4ead9;
+    --panel:rgba(24,17,32,0.86);
+    --paneledge:rgba(255,207,135,0.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#0d0913;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--cream)}
+  .retro{font-family:"Press Start 2P",monospace}
+
+  #app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:
+     radial-gradient(120% 90% at 50% -10%, #3d3a63 0%, #1a1226 55%, #0d0913 100%);}
+  #stage{position:relative;width:100%;height:100%;max-width:960px;max-height:540px;
+     aspect-ratio:16/9;box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 2px rgba(255,207,135,.12);
+     border-radius:14px;overflow:hidden;background:#0d0913}
+  canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+    align-items:flex-start;padding:12px 14px;pointer-events:none;z-index:5;
+    transition:opacity .3s}
+  .meters{display:flex;flex-direction:column;gap:7px}
+  .meter{display:flex;align-items:center;gap:8px}
+  .meter .lab{font-size:7px;width:64px;letter-spacing:.5px;text-shadow:0 2px 0 #000}
+  .bar{width:120px;height:11px;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.14);
+    border-radius:2px;overflow:hidden;position:relative}
+  .fill{height:100%;width:50%;transition:width .5s cubic-bezier(.4,1.4,.5,1)}
+  .fill.trust{background:linear-gradient(90deg,#b56b7a,var(--rose))}
+  .fill.friend{background:linear-gradient(90deg,#4c8a76,var(--sage))}
+  #daychip{pointer-events:auto;background:var(--panel);border:2px solid var(--paneledge);
+    border-radius:8px;padding:8px 10px;font-size:8px;line-height:1.5;text-align:right}
+  #daychip b{color:var(--amber)}
+  .iconbtn{pointer-events:auto;background:var(--panel);border:2px solid var(--paneledge);
+    color:var(--cream);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:14px;
+    display:grid;place-items:center;transition:transform .1s,background .2s}
+  .iconbtn:hover{transform:translateY(-1px);background:rgba(60,40,80,.9)}
+  .topbtns{display:flex;gap:8px;align-items:center}
+
+  /* ---------- Dialogue ---------- */
+  #dbox{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:0 14px 16px}
+  #nameplate{display:inline-block;margin:0 0 -2px 14px;padding:7px 16px 8px;
+    background:var(--panel);border:2px solid var(--paneledge);border-bottom:none;
+    border-radius:10px 10px 0 0;font-size:9px;letter-spacing:.5px;position:relative;z-index:2;
+    box-shadow:0 -3px 12px rgba(0,0,0,.4)}
+  #textpanel{background:var(--panel);border:2px solid var(--paneledge);border-radius:12px;
+    padding:18px 20px 16px;min-height:118px;position:relative;backdrop-filter:blur(2px);
+    box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #dtext{font-size:clamp(14px,2.4vw,18px);line-height:1.55;letter-spacing:.1px;min-height:52px;
+    text-shadow:0 1px 0 rgba(0,0,0,.4)}
+  #dtext .nar{color:#c8bcd6;font-style:italic}
+  #adv{position:absolute;right:16px;bottom:12px;font-size:9px;color:var(--amber);
+    animation:bob 1s infinite ease-in-out}
+  @keyframes bob{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(3px);opacity:1}}
+
+  /* ---------- Choices ---------- */
+  #choices{position:absolute;inset:0;z-index:7;display:none;flex-direction:column;gap:10px;
+    justify-content:center;align-items:center;padding:40px 24px;
+    background:linear-gradient(180deg,rgba(13,9,19,.15),rgba(13,9,19,.72))}
+  .choice{width:min(560px,92%);background:rgba(30,22,42,.92);border:2px solid var(--paneledge);
+    border-radius:10px;padding:14px 18px;color:var(--cream);font-size:clamp(13px,2.2vw,16px);
+    text-align:left;cursor:pointer;transition:transform .12s,border-color .2s,background .2s;
+    line-height:1.4;display:flex;gap:10px;align-items:center}
+  .choice:hover:not(.locked){transform:translateX(6px);border-color:var(--amber);background:rgba(52,38,72,.95)}
+  .choice .tag{font-size:7px;padding:3px 6px;border-radius:4px;background:rgba(255,207,135,.16);
+    color:var(--amber);white-space:nowrap}
+  .choice.locked{opacity:.5;cursor:not-allowed;border-style:dashed}
+  .choice.locked .tag{background:rgba(255,120,120,.18);color:#ff9d9d}
+
+  /* ---------- Chat overlay ---------- */
+  #chat{position:absolute;inset:0;z-index:7;display:none;flex-direction:column;
+    background:linear-gradient(180deg,#1a1226,#0d0913);padding:16px}
+  #chat .head{text-align:center;font-size:9px;padding:8px;border-bottom:2px solid rgba(255,207,135,.2);color:var(--amber)}
+  #chatlog{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:16px 10px;justify-content:flex-end}
+  .bubble{max-width:74%;padding:10px 14px;border-radius:14px;font-size:clamp(13px,2.2vw,15px);line-height:1.4;
+    animation:pop .25s ease}
+  .bubble.them{align-self:flex-start;background:#39304a;border-bottom-left-radius:4px}
+  .bubble.me{align-self:flex-end;background:linear-gradient(135deg,#4f7fbf,#6f9bd8);border-bottom-right-radius:4px}
+  .bubble .snd{font-size:8px;opacity:.7;margin-bottom:3px;font-family:"Press Start 2P"}
+  @keyframes pop{from{transform:translateY(8px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+
+  /* ---------- Title / Menus ---------- */
+  .screen{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:24px;
+    background:linear-gradient(180deg,rgba(13,9,19,.4),rgba(13,9,19,.82))}
+  #titlescreen{background:transparent}
+  .gtitle{font-size:clamp(20px,5.2vw,40px);line-height:1.35;color:var(--amber);
+    text-shadow:0 4px 0 #7a3b52,0 5px 18px rgba(0,0,0,.6);margin-bottom:6px}
+  .gsub{font-size:clamp(8px,1.6vw,10px);color:#c9bcd8;letter-spacing:2px;margin-bottom:34px}
+  .btn{font-family:"Press Start 2P";font-size:clamp(9px,1.7vw,11px);color:var(--ink);
+    background:linear-gradient(180deg,var(--amber),var(--amber2));border:none;
+    padding:15px 26px;border-radius:10px;cursor:pointer;margin:6px;min-width:210px;
+    box-shadow:0 5px 0 #9c5a2e,0 8px 16px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s}
+  .btn:hover{transform:translateY(2px);box-shadow:0 3px 0 #9c5a2e,0 5px 10px rgba(0,0,0,.4)}
+  .btn.ghost{background:rgba(40,28,58,.9);color:var(--cream);box-shadow:0 5px 0 #1a1226}
+  .btn.ghost:hover{box-shadow:0 3px 0 #1a1226}
+  .btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none}
+  .credits{position:absolute;bottom:14px;font-size:7px;color:#7c6f8c;letter-spacing:1px}
+
+  .panelbox{background:var(--panel);border:2px solid var(--paneledge);border-radius:14px;
+    padding:22px;max-width:520px;width:92%;max-height:82%;overflow:auto}
+  .panelbox h2{font-family:"Press Start 2P";font-size:13px;color:var(--amber);margin-bottom:16px}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;
+    border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
+  .seg{display:flex;gap:4px}
+  .seg button{font-family:inherit;font-size:11px;padding:6px 10px;border-radius:6px;cursor:pointer;
+    border:1px solid rgba(255,207,135,.3);background:transparent;color:var(--cream)}
+  .seg button.on{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+  .galgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .galcard{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;
+    padding:12px;font-size:12px}
+  .galcard.locked{opacity:.45}
+  .galcard b{display:block;font-size:10px;font-family:"Press Start 2P";color:var(--amber);margin-bottom:6px;line-height:1.4}
+  .galcard.locked b{color:#8a7c9a}
+
+  #endingcard{z-index:22}
+  .endtag{font-family:"Press Start 2P";font-size:8px;color:var(--amber);letter-spacing:3px;margin-bottom:14px}
+  .endtitle{font-family:"Press Start 2P";font-size:clamp(16px,4vw,26px);line-height:1.4;margin-bottom:18px}
+  .enddesc{font-size:clamp(13px,2.3vw,15px);line-height:1.6;color:#e5dcef;max-width:520px;margin-bottom:26px}
+
+  .hidden{display:none!important}
+  .fadeblack{position:absolute;inset:0;z-index:15;background:#0d0913;pointer-events:none;opacity:0;
+    transition:opacity .6s}
+  #toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:12;
+    background:var(--panel);border:2px solid var(--paneledge);border-radius:8px;padding:9px 16px;
+    font-size:8px;color:var(--amber);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;
+    font-family:"Press Start 2P"}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(4px)}
+
+  @media (max-width:560px){
+    #stage{border-radius:0}
+    .bar{width:88px}.meter .lab{width:52px}
+    #textpanel{min-height:104px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="scene" width="480" height="270"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="meters">
+        <div class="meter"><span class="lab">KEPERCAYAAN</span><div class="bar"><div id="trustfill" class="fill trust"></div></div></div>
+        <div class="meter"><span class="lab">PERSAHABATAN</span><div class="bar"><div id="friendfill" class="fill friend"></div></div></div>
+      </div>
+      <div class="topbtns">
+        <div id="daychip">Hari <b id="dayn">1</b><br><span id="locname">Taman Kota</span></div>
+        <button class="iconbtn" id="btnlog" title="Riwayat">☰</button>
+        <button class="iconbtn" id="btnset" title="Pengaturan">⚙</button>
+      </div>
+    </div>
+
+    <div id="dbox" class="hidden">
+      <div id="nameplate" class="retro">Narator</div>
+      <div id="textpanel">
+        <div id="dtext"></div>
+        <div id="adv" class="retro">▼ ketuk</div>
+      </div>
+    </div>
+
+    <div id="choices"></div>
+
+    <div id="chat">
+      <div class="head retro" id="chathead">Pesan</div>
+      <div id="chatlog"></div>
+    </div>
+
+    <div id="toast" class="retro"></div>
+    <div id="fade" class="fadeblack"></div>
+
+    <!-- Title -->
+    <div id="titlescreen" class="screen">
+      <div class="gtitle retro">Pilihan<br>yang Sulit</div>
+      <div class="gsub retro">SEBUAH KISAH PERSAHABATAN &amp; KEPERCAYAAN</div>
+      <button class="btn" id="btnnew">Mulai Cerita</button>
+      <button class="btn ghost" id="btngal">Galeri Ending</button>
+      <button class="btn ghost" id="btnhow">Cara Main</button>
+      <div class="credits retro">Pixel Story RPG · Ketuk layar untuk melanjutkan</div>
+    </div>
+
+    <!-- Settings -->
+    <div id="setscreen" class="screen hidden">
+      <div class="panelbox">
+        <h2>Pengaturan</h2>
+        <div class="row"><span>Musik</span><div class="seg" id="segMusic"><button data-v="1" class="on">Nyala</button><button data-v="0">Mati</button></div></div>
+        <div class="row"><span>Kecepatan Teks</span><div class="seg" id="segSpeed"><button data-v="fast">Cepat</button><button data-v="normal" class="on">Sedang</button><button data-v="slow">Pelan</button></div></div>
+        <div class="row" style="border:none;justify-content:center;gap:10px;margin-top:12px">
+          <button class="btn ghost" id="setBack" style="min-width:auto">Kembali</button>
+          <button class="btn ghost" id="setTitle" style="min-width:auto">Menu Utama</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backlog -->
+    <div id="logscreen" class="screen hidden">
+      <div class="panelbox">
+        <h2>Riwayat Dialog</h2>
+        <div id="logbody" style="font-size:13px;line-height:1.6"></div>
+        <div style="text-align:center;margin-top:16px"><button class="btn ghost" id="logBack" style="min-width:auto">Tutup</button></div>
+      </div>
+    </div>
+
+    <!-- Gallery -->
+    <div id="galscreen" class="screen hidden">
+      <div class="panelbox">
+        <h2>Galeri Ending</h2>
+        <p style="font-size:12px;color:#c9bcd8;margin-bottom:12px">Ending yang berhasil kamu capai. Setiap pilihan membuka jalan yang berbeda.</p>
+        <div class="galgrid" id="galgrid"></div>
+        <div style="text-align:center;margin-top:18px"><button class="btn ghost" id="galBack" style="min-width:auto">Kembali</button></div>
+      </div>
+    </div>
+
+    <!-- How to play -->
+    <div id="howscreen" class="screen hidden">
+      <div class="panelbox">
+        <h2>Cara Main</h2>
+        <div style="font-size:13px;line-height:1.7">
+          <p>• <b>Ketuk layar / dialog</b> untuk melanjutkan cerita.</p>
+          <p>• Saat muncul <b>pilihan</b>, setiap keputusan memengaruhi dua hal:</p>
+          <p style="margin-left:14px"><span style="color:var(--rose)">Kepercayaan</span> — hubunganmu dengan Adel.</p>
+          <p style="margin-left:14px"><span style="color:var(--sage)">Persahabatan</span> — ikatanmu dengan Rafi.</p>
+          <p>• Beberapa jalan akhir hanya terbuka bila meter cukup tinggi. Pilihanmu sepanjang cerita menentukan salah satu dari <b>6 ending</b>.</p>
+          <p>• Kamu bermain sebagai <b>Jeki</b>. Dengarkan, jujur, dan pikirkan siapa yang paling membutuhkanmu.</p>
+        </div>
+        <div style="text-align:center;margin-top:18px"><button class="btn ghost" id="howBack" style="min-width:auto">Kembali</button></div>
+      </div>
+    </div>
+
+    <!-- Ending card -->
+    <div id="endingcard" class="screen hidden">
+      <div class="endtag retro" id="endtag">ENDING</div>
+      <div class="endtitle retro" id="endtitle"></div>
+      <div class="enddesc" id="enddesc"></div>
+      <div>
+        <button class="btn" id="endGal">Galeri Ending</button>
+        <button class="btn ghost" id="endNGplus">New Game +</button>
+        <button class="btn ghost" id="endTitle">Menu Utama</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   PILIHAN YANG SULIT — pixel-art visual novel engine
+   ========================================================================= */
+const cv = document.getElementById('scene');
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = 480, H = 270;
+
+/* ---------- Character palettes ---------- */
+const CHARS = {
+  jeki:{name:"Jeki", skin:"#e8b98c",skinsh:"#c9946b", hair:"#3a2a22",hairsh:"#241812",
+        shirt:"#5a86c9",shirtsh:"#3f65a0", accent:"#6f9bd8"},
+  rafi:{name:"Rafi", skin:"#d9a878",skinsh:"#b6864f", hair:"#241a2e",hairsh:"#150e1c",
+        shirt:"#5f9e86",shirtsh:"#3f7460", accent:"#6fae9a"},
+  adel:{name:"Adel", skin:"#f0c9a8",skinsh:"#d3a483", hair:"#5a3535",hairsh:"#3d2222",
+        shirt:"#d98c9a",shirtsh:"#b56b7a", accent:"#e6a9b4", long:true},
+  kaila:{name:"Kaila", skin:"#f2ceb0",skinsh:"#d9ab8a", hair:"#3a2a22",hairsh:"#241812",
+        shirt:"#f0c86a",shirtsh:"#d1a63f", accent:"#ffe08a", child:true, long:true}
+};
+
+/* ---------- Pixel portrait engine ----------
+   Draws an expressive chibi bust on a 1-unit grid. cell = pixel size.       */
+function px(gx,gy,c,ox,oy,cell,w=1,h=1){ ctx.fillStyle=c; ctx.fillRect(ox+gx*cell, oy+gy*cell, w*cell, h*cell); }
+
+function drawPortrait(who, emo, cx, cy, scale, t){
+  const C = CHARS[who]; if(!C) return;
+  const cell = scale;
+  const breath = Math.round(Math.sin(t*0.0016 + (who.charCodeAt(0)))*1.4);
+  const ox = cx - 11*cell, oy = cy - 12*cell + breath*Math.max(1,cell*0.4);
+
+  // shoulders / shirt
+  px(2,22,C.shirtsh,ox,oy,cell,18,8);
+  px(3,21,C.shirt,ox,oy,cell,16,7);
+  px(9,20,C.skin,ox,oy,cell,4,3); // neck
+  px(9,20,C.skinsh,ox,oy,cell,4,1);
+  // collar accent
+  px(8,21,C.accent,ox,oy,cell,1,2); px(13,21,C.accent,ox,oy,cell,1,2);
+
+  // back hair for long-haired
+  if(C.long){ px(3,7,C.hairsh,ox,oy,cell,16,16); }
+
+  // head base
+  px(6,4,C.skin,ox,oy,cell,10,15);
+  px(5,6,C.skin,ox,oy,cell,12,11);
+  px(5,6,C.skinsh,ox,oy,cell,1,11); // left shade
+  px(16,6,C.skinsh,ox,oy,cell,1,11);
+  px(6,17,C.skinsh,ox,oy,cell,10,2); // chin shade
+
+  // ears
+  px(4,11,C.skin,ox,oy,cell,1,3); px(17,11,C.skin,ox,oy,cell,1,3);
+
+  // hair top
+  px(5,2,C.hair,ox,oy,cell,12,4);
+  px(4,4,C.hair,ox,oy,cell,3,6);
+  px(15,4,C.hair,ox,oy,cell,3,6);
+  px(6,3,C.hairsh,ox,oy,cell,10,1);
+  // fringe
+  if(C.child){ px(7,5,C.hair,ox,oy,cell,3,2); px(12,5,C.hair,ox,oy,cell,3,2);
+               // hair clips
+               px(4,4,C.accent,ox,oy,cell,1,1); px(16,4,C.accent,ox,oy,cell,1,1);
+  } else if(who==='adel'){ px(6,5,C.hair,ox,oy,cell,3,3); px(13,5,C.hair,ox,oy,cell,3,3);
+  } else { px(6,5,C.hair,ox,oy,cell,2,2); px(11,5,C.hair,ox,oy,cell,4,2); px(14,5,C.hair,ox,oy,cell,2,2); }
+
+  // long hair front strands
+  if(C.long){ px(4,10,C.hair,ox,oy,cell,1,9); px(17,10,C.hair,ox,oy,cell,1,9);
+              px(3,12,C.hair,ox,oy,cell,1,7); px(18,12,C.hair,ox,oy,cell,1,7); }
+
+  // --- emotion parameters ---
+  const blink = (Math.sin(t*0.003 + who.length) > 0.94);
+  let browL=0, browR=0, browY=8, eyeOpen=true, mouth='neutral', tears=false, blush=false;
+  switch(emo){
+    case 'happy':    browY=8; mouth='smile'; blush=(who==='adel'||who==='kaila'); break;
+    case 'sad':      browL=-1;browR=-1;browY=9; mouth='frown'; break;
+    case 'cry':      browL=-1;browR=-1;browY=9; mouth='frown'; tears=true; eyeOpen=false; break;
+    case 'angry':    browL=1; browR=1; browY=9; mouth='grit'; break;
+    case 'worried':  browL=-1;browR=1; browY=9; mouth='small'; break;
+    case 'surprised':browY=7; mouth='o'; break;
+    case 'soft':     browY=8; mouth='small'; blush=(who==='adel'); break;
+    default:         mouth='neutral';
+  }
+
+  // eyebrows
+  const bc=C.hairsh;
+  px(7, 8+browY-8+browL, bc, ox,oy,cell,3,1);
+  px(12,8+browY-8+browR, bc, ox,oy,cell,3,1);
+
+  // eyes
+  const eyW=2,eyH= (emo==='surprised')?3:2;
+  const eyeY=10;
+  if(blink && eyeOpen){ px(7,11,C.skinsh,ox,oy,cell,3,1); px(12,11,C.skinsh,ox,oy,cell,3,1); }
+  else if(!eyeOpen){ // closed (crying / bliss)
+    px(7,11,C.hairsh,ox,oy,cell,3,1); px(12,11,C.hairsh,ox,oy,cell,3,1);
+  } else {
+    px(7,eyeY,"#fff",ox,oy,cell,3,eyH); px(12,eyeY,"#fff",ox,oy,cell,3,eyH);
+    px(8,eyeY,C.hairsh,ox,oy,cell,2,eyH); px(13,eyeY,C.hairsh,ox,oy,cell,2,eyH);
+    px(8,eyeY,"#fff",ox,oy,cell,1,1); px(13,eyeY,"#fff",ox,oy,cell,1,1); // shine
+  }
+
+  // blush
+  if(blush){ px(6,13,C.accent,ox,oy,cell,2,1); px(14,13,C.accent,ox,oy,cell,2,1); }
+
+  // tears
+  if(tears){ const drop=(Math.sin(t*0.006)+1)/2;
+    px(7,12+Math.round(drop*3),"#9fd4ff",ox,oy,cell,1,2);
+    px(14,12+Math.round((1-drop)*3),"#9fd4ff",ox,oy,cell,1,2); }
+
+  // mouth
+  const mc="#8a4a4a";
+  const my=15;
+  if(mouth==='smile'){ px(9,my,mc,ox,oy,cell,4,1); px(8,my-1,mc,ox,oy,cell,1,1); px(13,my-1,mc,ox,oy,cell,1,1); }
+  else if(mouth==='frown'){ px(9,my,mc,ox,oy,cell,4,1); px(8,my+1,mc,ox,oy,cell,1,1); px(13,my+1,mc,ox,oy,cell,1,1); }
+  else if(mouth==='grit'){ px(9,my,"#5a2a2a",ox,oy,cell,4,2); px(9,my,"#fff",ox,oy,cell,4,1); }
+  else if(mouth==='o'){ px(10,my,"#5a2a2a",ox,oy,cell,2,2); }
+  else if(mouth==='small'){ px(10,my,mc,ox,oy,cell,2,1); }
+  else { px(9,my,mc,ox,oy,cell,4,1); }
+}
+
+/* ---------- Background scenes ---------- */
+function vgrad(x,y,w,h,c1,c2){ const g=ctx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,c1); g.addColorStop(1,c2); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); }
+function rrand(seed){ let s=Math.sin(seed)*43758.5453; return s-Math.floor(s); }
+
+function skyColors(time){
+  if(time==='night')  return ['#141033','#2a2350'];
+  if(time==='dusk')   return ['#6b3b6e','#e08a5c'];
+  return ['#8fc7e8','#cfe9f2']; // day
+}
+function drawStars(time){ if(time!=='night')return;
+  for(let i=0;i<40;i++){ const x=Math.floor(rrand(i*3.1)*W), y=Math.floor(rrand(i*7.7)*120);
+    const tw=(Math.sin(anim*0.003+i)+1)/2; ctx.fillStyle='rgba(255,255,220,'+(0.4+tw*0.6)+')'; ctx.fillRect(x,y,2,2); }
+  // moon
+  ctx.fillStyle='#f7f0d0'; ctx.beginPath(); ctx.arc(410,50,20,0,7); ctx.fill();
+  ctx.fillStyle=skyColors('night')[0]; ctx.beginPath(); ctx.arc(402,44,18,0,7); ctx.fill();
+}
+
+function drawPark(time){
+  const s=skyColors(time); vgrad(0,0,W,180,s[0],s[1]); drawStars(time);
+  // hills
+  ctx.fillStyle=time==='night'?'#1c2a1e':'#5f8a52'; ctx.beginPath();
+  ctx.moveTo(0,180); for(let x=0;x<=W;x+=20){ctx.lineTo(x,150+Math.sin(x*0.03)*14);} ctx.lineTo(W,180); ctx.fill();
+  // grass
+  vgrad(0,175,W,95, time==='night'?'#2b4a2b':'#6ba85a', time==='night'?'#1a301a':'#4d7d40');
+  // path
+  ctx.fillStyle=time==='night'?'#4a4030':'#c9a878'; ctx.beginPath();
+  ctx.moveTo(200,270);ctx.lineTo(240,270);ctx.lineTo(220,175);ctx.lineTo(215,175);ctx.fill();
+  // trees
+  for(let i=0;i<4;i++){ const bx=40+i*130, by=170;
+    ctx.fillStyle=time==='night'?'#2a1e16':'#5a3d24'; ctx.fillRect(bx-3,by-20,6,22);
+    ctx.fillStyle=time==='night'?'#22401f':'#4f8a3f'; ctx.beginPath(); ctx.arc(bx,by-30,22,0,7); ctx.fill();
+    ctx.fillStyle=time==='night'?'#2c4d28':'#5f9e48'; ctx.beginPath(); ctx.arc(bx-8,by-24,14,0,7); ctx.fill();
+  }
+  // bench
+  ctx.fillStyle=time==='night'?'#3a2a20':'#7a5a3a'; ctx.fillRect(60,205,60,6); ctx.fillRect(64,211,5,14); ctx.fillRect(112,211,5,14); ctx.fillRect(60,192,60,5);
+  // lamp (glows at night/dusk)
+  ctx.fillStyle='#3a3a44'; ctx.fillRect(400,150,5,60);
+  const on = time!=='day';
+  ctx.fillStyle=on?'#ffd97a':'#8a8a6a'; ctx.beginPath(); ctx.arc(402,148,7,0,7); ctx.fill();
+  if(on){ const gl=ctx.createRadialGradient(402,148,2,402,148,50); gl.addColorStop(0,'rgba(255,210,120,.5)'); gl.addColorStop(1,'rgba(255,210,120,0)'); ctx.fillStyle=gl; ctx.fillRect(352,98,100,100); }
+}
+
+function drawCafe(time){
+  vgrad(0,0,W,270,'#3a2620','#241612');
+  // back wall
+  ctx.fillStyle='#4a3226'; ctx.fillRect(0,0,W,190);
+  // warm wall lights
+  for(let i=0;i<3;i++){ const lx=90+i*150; ctx.fillStyle='#3a241a'; ctx.fillRect(lx-2,20,4,10);
+    ctx.fillStyle='#ffcf87'; ctx.beginPath(); ctx.arc(lx,34,6,0,7); ctx.fill();
+    const gl=ctx.createRadialGradient(lx,34,2,lx,34,46); gl.addColorStop(0,'rgba(255,200,120,.45)'); gl.addColorStop(1,'rgba(255,200,120,0)'); ctx.fillStyle=gl; ctx.fillRect(lx-46,-12,92,92); }
+  // shelf
+  ctx.fillStyle='#5a3d2a'; ctx.fillRect(20,70,150,6);
+  for(let i=0;i<6;i++){ ctx.fillStyle=['#8a5a3a','#c98a4a','#6f9e86','#d98c9a'][i%4]; ctx.fillRect(28+i*22,54,10,16); }
+  // window with time sky
+  const s=skyColors(time); ctx.fillStyle='#2a1c16'; ctx.fillRect(300,40,150,90);
+  vgrad(306,46,138,78,s[0],s[1]); ctx.fillStyle='#2a1c16'; ctx.fillRect(374,40,4,90); ctx.fillRect(300,82,150,4);
+  // floor
+  vgrad(0,190,W,80,'#3a2620','#1e1310');
+  // table
+  ctx.fillStyle='#6b4a30'; ctx.fillRect(140,208,200,10); ctx.fillStyle='#4a3220'; ctx.fillRect(150,218,10,40); ctx.fillRect(320,218,10,40);
+  // two cups
+  ctx.fillStyle='#e8ddd0'; ctx.fillRect(180,200,14,10); ctx.fillRect(288,200,14,10);
+  ctx.fillStyle='#5a3a22'; ctx.fillRect(182,201,10,3); ctx.fillRect(290,201,10,3);
+  // steam
+  for(let i=0;i<2;i++){ const bx=186+i*108; ctx.fillStyle='rgba(255,255,255,'+(0.15+0.1*Math.sin(anim*0.004+i))+')';
+    ctx.fillRect(bx+3, 190+Math.sin(anim*0.006+i)*3, 2, 8); }
+}
+
+function drawRoom(time){
+  vgrad(0,0,W,190, time==='night'?'#2a2440':'#5a6a8a', time==='night'?'#1c1830':'#3d4a63');
+  ctx.fillStyle=time==='night'?'#241f38':'#4a5670'; ctx.fillRect(0,0,W,190);
+  // window
+  const s=skyColors(time); ctx.fillStyle='#2a2438'; ctx.fillRect(40,36,120,90);
+  vgrad(46,42,108,78,s[0],s[1]); drawStarsIn(46,42,108,60,time);
+  ctx.fillStyle='#2a2438'; ctx.fillRect(96,36,4,90); ctx.fillRect(40,78,120,4);
+  // picture frame
+  ctx.fillStyle='#6b5a3a'; ctx.fillRect(300,50,70,50); ctx.fillStyle='#8fb0c9'; ctx.fillRect(306,56,58,38);
+  ctx.fillStyle='#6f9e5a'; ctx.fillRect(306,80,58,14);
+  // desk lamp glow
+  ctx.fillStyle='#3a3446'; ctx.fillRect(360,150,6,40);
+  ctx.fillStyle='#ffcf87'; ctx.beginPath(); ctx.arc(360,148,8,0,7); ctx.fill();
+  const gl=ctx.createRadialGradient(360,150,4,360,150,70); gl.addColorStop(0,'rgba(255,200,120,.4)'); gl.addColorStop(1,'rgba(255,200,120,0)'); ctx.fillStyle=gl; ctx.fillRect(290,80,140,140);
+  // floor + bed hint
+  vgrad(0,190,W,80,'#3a3050','#241c34');
+  ctx.fillStyle='#6f5a7a'; ctx.fillRect(20,205,150,50); ctx.fillStyle='#d98c9a'; ctx.fillRect(20,205,150,14);
+}
+function drawStarsIn(x,y,w,h,time){ if(time!=='night')return; for(let i=0;i<14;i++){ const sx=x+Math.floor(rrand(i*2.3)*w), sy=y+Math.floor(rrand(i*5.1)*h); ctx.fillStyle='rgba(255,255,220,.8)'; ctx.fillRect(sx,sy,1,1);} }
+
+function drawSchool(time){
+  const s=skyColors(time); vgrad(0,0,W,150,s[0],s[1]); drawStars(time);
+  // building
+  ctx.fillStyle=time==='night'?'#3a3450':'#d9c9a0'; ctx.fillRect(0,90,W,110);
+  ctx.fillStyle=time==='night'?'#2a2440':'#c2b088'; ctx.fillRect(0,90,W,10);
+  for(let i=0;i<8;i++){ ctx.fillStyle=time==='night'?'#ffd97a':'#8fb0c9'; ctx.fillRect(24+i*58,110,30,24);
+    ctx.fillStyle=time==='night'?'#3a3450':'#c2b088'; ctx.fillRect(38+i*58,110,2,24); }
+  ctx.fillStyle='#7a5a3a'; ctx.fillRect(210,150,60,50); ctx.fillStyle='#5a3d24'; ctx.fillRect(236,150,6,50);
+  // ground
+  vgrad(0,190,W,80,'#8a8a6a','#5a5a44');
+}
+function drawStreet(time){
+  const s=skyColors(time); vgrad(0,0,W,140,s[0],s[1]); drawStars(time);
+  // buildings
+  for(let i=0;i<6;i++){ const bx=i*82, bh=70+Math.floor(rrand(i)*60);
+    ctx.fillStyle=time==='night'?'#221c38':'#8a7a8a'; ctx.fillRect(bx,140-bh,78,bh+40);
+    for(let w=0;w<9;w++){ const on=rrand(i*9+w)>0.55; ctx.fillStyle=(time==='night')?(on?'#ffd97a':'#181428'):'#6a5a6a';
+      ctx.fillRect(bx+8+(w%3)*22, 150-bh+Math.floor(w/3)*20, 12,12); } }
+  vgrad(0,178,W,92,'#3a3444','#1e1a28');
+  // road line
+  ctx.fillStyle='#c9b46a'; for(let x=10;x<W;x+=40) ctx.fillRect(x,224,20,4);
+}
+
+const SCENES={taman:drawPark,kafe:drawCafe,rumah:drawRoom,sekolah:drawSchool,jalan:drawStreet};
+const LOCNAME={taman:"Taman Kota",kafe:"Kafe Senja",rumah:"Kamar Jeki",sekolah:"Sekolah",jalan:"Jalan Kota"};
+
+/* ---------- Weather / lighting ---------- */
+let rainDrops=[]; for(let i=0;i<90;i++) rainDrops.push({x:Math.random()*W,y:Math.random()*H,l:4+Math.random()*8,s:3+Math.random()*3});
+function drawRain(intensity){
+  ctx.strokeStyle='rgba(180,200,230,0.4)'; ctx.lineWidth=1;
+  for(const d of rainDrops){ ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-2,d.y+d.l); ctx.stroke();
+    d.y+=d.s*intensity; d.x-=1; if(d.y>H){d.y=-6;d.x=Math.random()*W;} }
+  ctx.fillStyle='rgba(30,40,70,0.18)'; ctx.fillRect(0,0,W,H);
+}
+function applyGrade(time,emo,weather){
+  // emotional color grade overlay
+  let tint='rgba(0,0,0,0)';
+  if(weather==='rain') tint='rgba(40,60,90,0.20)';
+  else if(time==='night') tint='rgba(30,30,70,0.28)';
+  else if(time==='dusk') tint='rgba(120,60,40,0.14)';
+  ctx.fillStyle=tint; ctx.fillRect(0,0,W,H);
+  // mood vignette
+  const mood = (emo==='cry'||emo==='sad')?'rgba(20,30,60,0.30)': (emo==='happy')?'rgba(255,200,120,0.10)':'rgba(0,0,0,0)';
+  ctx.fillStyle=mood; ctx.fillRect(0,0,W,H);
+  const vg=ctx.createRadialGradient(W/2,H/2,80,W/2,H/2,300);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.45)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+}
+
+/* ---------- Render loop ---------- */
+let anim=0;
+const stageState={ bg:'taman', time:'dusk', weather:'clear',
+  left:null, right:null, leftEmo:'neutral', rightEmo:'neutral', speaker:null };
+
+function render(ts){
+  anim=ts||0;
+  ctx.clearRect(0,0,W,H);
+  (SCENES[stageState.bg]||drawPark)(stageState.time);
+  if(stageState.weather==='rain') drawRain(1);
+  // characters
+  const active=stageState.speaker;
+  if(stageState.left){
+    const dim = active && active!==stageState.left && active!=='narration';
+    ctx.globalAlpha = dim?0.55:1;
+    drawPortrait(stageState.left, stageState.leftEmo, 120, 150, 5, anim);
+    ctx.globalAlpha=1;
+  }
+  if(stageState.right){
+    const dim = active && active!==stageState.right && active!=='narration';
+    ctx.globalAlpha = dim?0.55:1;
+    drawPortrait(stageState.right, stageState.rightEmo, 360, 150, 5, anim);
+    ctx.globalAlpha=1;
+  }
+  applyGrade(stageState.time, (active==='narration')?'neutral':(active===stageState.left?stageState.leftEmo:stageState.rightEmo), stageState.weather);
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+/* ---------- Audio (ambient, mood-driven) ---------- */
+let AC=null, master=null, musicOn=true, curMood='calm', moodTimer=null;
+function initAudio(){ if(AC) return; try{ AC=new (window.AudioContext||window.webkitAudioContext)(); master=AC.createGain(); master.gain.value=0.0; master.connect(AC.destination);}catch(e){} }
+const MOODS={
+  calm:  {root:220.0, scale:[0,2,4,7,9], wave:'sine',   gain:0.10, rate:2600},
+  warm:  {root:261.6, scale:[0,4,7,9,12],wave:'triangle',gain:0.11, rate:2200},
+  tense: {root:196.0, scale:[0,2,3,7,8], wave:'sine',   gain:0.09, rate:3200},
+  sad:   {root:174.6, scale:[0,3,5,7,10],wave:'sine',   gain:0.10, rate:3400},
+  hope:  {root:293.6, scale:[0,4,7,11,14],wave:'triangle',gain:0.12,rate:2000}
+};
+function playNote(freq, dur, when, m){
+  if(!AC) return; const o=AC.createOsc?AC.createOsc():AC.createOscillator(); const g=AC.createGain(); const f=AC.createBiquadFilter();
+  f.type='lowpass'; f.frequency.value=1400; o.type=m.wave; o.frequency.value=freq;
+  o.connect(f); f.connect(g); g.connect(master);
+  g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(m.gain, when+0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+dur);
+  o.start(when); o.stop(when+dur+0.05);
+}
+function scheduleMusic(){ if(!AC||!musicOn) return; const m=MOODS[curMood]||MOODS.calm; const now=AC.currentTime;
+  const deg=m.scale[Math.floor(Math.random()*m.scale.length)]; const oct=Math.random()<0.4?1:0;
+  const freq=m.root*Math.pow(2,(deg+oct*12)/12);
+  playNote(freq, 1.4, now, m);
+  if(Math.random()<0.5){ const d2=m.scale[Math.floor(Math.random()*m.scale.length)]; playNote(m.root*Math.pow(2,d2/12)/2, 2.4, now, m); }
+}
+function startMusicClock(){ if(moodTimer) return; moodTimer=setInterval(()=>{ if(musicOn&&AC){ const m=MOODS[curMood]||MOODS.calm; scheduleMusic(); } }, 900); }
+function setMood(mood){ if(mood&&MOODS[mood]) curMood=mood; }
+function setMusic(on){ musicOn=on; if(!master) return; master.gain.linearRampToValueAtTime(on?0.9:0.0, (AC?AC.currentTime:0)+0.4); }
+
+/* =========================================================================
+   STORY DATA
+   ========================================================================= */
+const G = { trust:50, friend:50, day:1, flags:{}, node:'intro1', history:[] };
+
+// helper to build node: {bg,time,weather,who,emo,left,right,text,next|choices|special}
+const S = {
+/* ---- ACT 1: kebahagiaan yang rapuh ---- */
+intro1:{bg:'taman',time:'dusk',weather:'clear',left:'jeki',right:'adel',who:'narration',emo:'neutral',mood:'warm',day:1,
+  t:`Beberapa bulan setelah lulus sekolah, hidup berjalan cepat. Sore ini, langit taman kota berwarna jingga keemasan.`,next:'intro2'},
+intro2:{who:'adel',right:'adel',left:'jeki',emo:'happy',speaker:'adel',
+  t:`"Jeki, lihat langitnya. Warnanya persis seperti waktu kita pertama jalan berdua."`,next:'intro3'},
+intro3:{who:'jeki',emo:'happy',speaker:'jeki',
+  t:`"Kamu masih ingat detail sekecil itu?" Aku tertawa. Bersama Adel, hari-hari terasa ringan.`,next:'intro4'},
+intro4:{who:'narration',emo:'neutral',speaker:'narration',
+  t:`Banyak teman bilang kami pasangan yang serasi. Tapi belakangan, ada sesuatu yang tak bisa kujelaskan — sebuah keraguan kecil yang terus muncul.`,next:'intro5'},
+intro5:{who:'jeki',emo:'worried',speaker:'jeki',
+  t:`Tadi aku menyebut nama Rafi, sahabatku. Dan untuk sepersekian detik, senyum Adel membeku.`,next:'c_notice'},
+
+c_notice:{choice:true, prompt:`Apa yang kulakukan dengan keraguan ini?`,
+  options:[
+    {label:`Tanyakan langsung kenapa ia gugup soal Rafi.`, tag:'Terus terang', fx:{trust:-3,friend:0,flags:{curious:true}}, next:'notice_ask'},
+    {label:`Simpan dulu. Beri Adel ruang, jangan menuduh.`, tag:'Sabar', fx:{trust:+4}, next:'notice_wait'}
+  ]},
+notice_ask:{who:'adel',right:'adel',left:'jeki',speaker:'adel',emo:'worried',mood:'tense',
+  t:`"Gugup? Enggak, kok." Adel mengalihkan pandangan. "Cuma... capek aja hari ini."`,next:'act1_end'},
+notice_wait:{who:'jeki',speaker:'jeki',emo:'soft',
+  t:`Aku memilih diam. Kalau ada yang ingin ia ceritakan, biar ia yang memutuskan kapan. Tapi rasa penasaran itu tak hilang.`,next:'act1_end'},
+act1_end:{who:'narration',speaker:'narration',emo:'neutral',
+  t:`Malam itu, ponselku bergetar. Sebuah pesan dari Rafi.`,next:'chat1'},
+
+/* ---- chat scene ---- */
+chat1:{chat:true, head:'Rafi', log:[
+  {who:'them',name:'Rafi',t:'Jek, kamu ada waktu besok?'},
+  {who:'me',name:'Jeki',t:'Ada. Kenapa, Fi?'},
+  {who:'them',name:'Rafi',t:'Ada yang harus aku omongin. Penting. Berdua aja ya.'},
+  {who:'me',name:'Jeki',t:'...oke. Di Kafe Senja, jam 4.'},
+  {who:'them',name:'Rafi',t:'Makasih. Maaf kalau nanti berat didengar.'}
+], next:'act2_open'},
+
+/* ---- ACT 2: kebenaran ---- */
+act2_open:{bg:'kafe',time:'dusk',weather:'clear',left:'jeki',right:'rafi',who:'narration',speaker:'narration',emo:'neutral',mood:'tense',day:2,
+  t:`Keesokan sorenya. Kafe Senja hangat oleh lampu kuning. Rafi sudah duduk di sana, dua cangkir kopi mengepul di meja.`,next:'reveal1'},
+reveal1:{who:'rafi',speaker:'rafi',emo:'worried',
+  t:`"Aku mau cerita sesuatu. Tapi aku minta satu hal — dengarkan sampai selesai. Jangan ambil kesimpulan di tengah."`,next:'c_listen'},
+c_listen:{choice:true, prompt:`Bagaimana aku menanggapi?`,
+  options:[
+    {label:`"Aku dengar. Pelan-pelan aja, Fi."`, tag:'Pendengar', fx:{friend:+8,flags:{listener:true}}, next:'reveal2', ach:'listener'},
+    {label:`"Langsung aja. Kamu bikin aku takut."`, tag:'Tegang', fx:{friend:-2}, next:'reveal2'}
+  ]},
+reveal2:{who:'rafi',speaker:'rafi',emo:'sad',mood:'sad',
+  t:`Rafi menarik napas panjang. "Jauh sebelum kamu dan Adel dekat... aku dan Adel pernah menjalin hubungan."`,next:'reveal3'},
+reveal3:{who:'jeki',speaker:'jeki',emo:'surprised',
+  t:`Cangkir di tanganku terasa mendadak dingin. Aku menahan diri, seperti janjiku tadi. "...lanjutkan."`,next:'reveal4'},
+reveal4:{who:'rafi',speaker:'rafi',emo:'cry',
+  t:`"Dari hubungan itu, kami punya seorang anak. Perempuan. Namanya Kaila." Suaranya bergetar. "Sekarang dia diasuh keluarga Adel. Aku kerja keras supaya bisa memenuhi tanggung jawabku sebagai ayah."`,next:'reveal5'},
+reveal5:{who:'rafi',speaker:'rafi',emo:'sad',
+  t:`"Kami berpisah karena masalah keluarga, salah paham, dan keputusan yang terlalu terburu-buru. Aku nggak datang buat merusak apa pun, Jek. Aku cuma... nggak mau kamu tahu dari orang lain."`,next:'c_react'},
+
+c_react:{choice:true, prompt:`Dadaku sesak. Apa yang keluar dari mulutku?`,
+  options:[
+    {label:`"Terima kasih sudah jujur padaku, Fi."`, tag:'Dewasa', fx:{friend:+8,trust:+2,flags:{honest:true}}, next:'react_calm'},
+    {label:`Diam. Aku butuh memproses ini sendiri.`, tag:'Menahan', fx:{friend:+2}, next:'react_quiet'},
+    {label:`"Kenapa semua orang membohongiku?"`, tag:'Terluka', fx:{friend:-6,trust:-6,flags:{angry:true}}, next:'react_hurt'}
+  ]},
+react_calm:{who:'rafi',speaker:'rafi',emo:'soft',mood:'warm',
+  t:`Rafi menunduk. "Kamu sahabat terbaik yang pernah aku punya." Untuk pertama kalinya sore itu, ada lega di matanya.`,next:'act2_bridge'},
+react_quiet:{who:'jeki',speaker:'jeki',emo:'sad',
+  t:`Aku hanya mengangguk pelan. Tak ada marah. Hanya kekecewaan karena tak ada yang jujur sejak awal — terutama Adel.`,next:'act2_bridge'},
+react_hurt:{who:'jeki',speaker:'jeki',emo:'angry',mood:'tense',
+  t:`Kata-kata itu keluar lebih tajam dari yang kumau. Rafi tak membalas. Ia hanya menerima amarahku dengan diam.`,next:'act2_bridge'},
+act2_bridge:{who:'narration',speaker:'narration',emo:'neutral',
+  t:`Malam turun. Aku harus menemui Adel. Ada satu pertanyaan yang harus kutanyakan langsung ke matanya.`,next:'confront1'},
+
+/* ---- confront Adel, rain ---- */
+confront1:{bg:'rumah',time:'night',weather:'rain',left:'adel',right:'jeki',who:'narration',speaker:'narration',emo:'neutral',mood:'sad',day:2,
+  t:`Hujan turun deras di luar jendela. Adel membuka pintu, dan dari wajahku, ia langsung tahu bahwa aku sudah tahu.`,next:'confront2'},
+confront2:{who:'jeki',speaker:'jeki',emo:'sad',
+  t:`"Kenapa kamu nggak pernah bilang, Del? Tentang Kaila. Tentang semuanya."`,next:'confront3'},
+confront3:{who:'adel',speaker:'adel',emo:'cry',
+  t:`Air mata mengalir di pipinya. "Aku takut... aku takut kehilangan kamu, Jeki."`,next:'c_trust'},
+
+c_trust:{choice:true, prompt:`Aku menatapnya lama. Apa yang paling jujur untuk kukatakan?`,
+  options:[
+    {label:`"Yang menghancurkan kepercayaan itu bukan masa lalumu — tapi bohongnya."`, tag:'Jujur', fx:{trust:-2,flags:{truthline:true,honest:true}}, next:'confront_truth', ach:'truthline'},
+    {label:`"Aku nggak marah soal masa lalu. Aku cuma butuh waktu."`, tag:'Pengertian', fx:{trust:+6}, next:'confront_time'},
+    {label:`"Mungkin kita nggak seharusnya lanjut."`, tag:'Menjauh', fx:{trust:-12}, next:'confront_break'}
+  ]},
+confront_truth:{who:'adel',speaker:'adel',emo:'cry',
+  t:`Adel terisak. "Kamu benar. Ketakutanku justru membuat semuanya jadi lebih besar." Ia tak membela diri. Ia mengakui.`,next:'act3_open'},
+confront_time:{who:'adel',speaker:'adel',emo:'sad',mood:'sad',
+  t:`"Ambil semua waktu yang kamu butuhkan," bisiknya. "Aku nggak akan lari lagi." Ada ketulusan yang jarang kulihat sebelumnya.`,next:'act3_open'},
+confront_break:{who:'adel',speaker:'adel',emo:'cry',mood:'sad',
+  t:`Ia tersentak, seolah kehabisan napas. "Aku... aku mengerti." Malam itu kami berpisah dengan luka yang belum sempat kami pahami.`,next:'act3_open'},
+
+/* ---- ACT 3: pertemuan tiga orang ---- */
+act3_open:{bg:'kafe',time:'day',weather:'clear',left:'rafi',right:'adel',who:'narration',speaker:'narration',emo:'neutral',mood:'tense',day:5,
+  t:`Beberapa hari kemudian, kami bertiga sepakat bertemu. Suasana canggung memenuhi ruangan. Cukup lama tak ada yang bicara.`,next:'three1'},
+three1:{who:'rafi',speaker:'rafi',emo:'soft',left:'rafi',right:'adel',
+  t:`Akhirnya Rafi membuka suara. "Aku nggak datang buat merebut siapa pun. Aku cuma ingin Kaila tetap dapat kasih sayang dari kedua orang tuanya."`,next:'three2'},
+three2:{who:'adel',speaker:'adel',emo:'soft',
+  t:`Adel mengangguk. "Itu juga yang aku mau."`,next:'three3'},
+three3:{who:'jeki',speaker:'jeki',emo:'neutral',left:'jeki',right:'adel',
+  t:`Aku memandang keduanya dengan tenang. "Aku menghargai kejujuran kalian sekarang. Tapi aku juga butuh waktu memikirkan semuanya."`,next:'meet_kaila_open'},
+
+/* ---- meet Kaila ---- */
+meet_kaila_open:{bg:'taman',time:'day',weather:'clear',left:'jeki',right:'kaila',who:'narration',speaker:'narration',emo:'neutral',mood:'warm',day:8,
+  t:`Beberapa hari kemudian, Adel memintaku ikut ke taman. Di sana, seorang gadis kecil berlari mengejar balon — Kaila.`,next:'kaila1'},
+kaila1:{who:'kaila',speaker:'kaila',emo:'happy',left:'jeki',right:'kaila',
+  t:`Ia berhenti di depanku, memiringkan kepala. "Kakak temannya Mama, ya? Kakak mau lihat gambarku nggak?"`,next:'c_kaila'},
+c_kaila:{choice:true, prompt:`Ia mengulurkan selembar kertas penuh coretan warna.`,
+  options:[
+    {label:`Berjongkok, tersenyum. "Wah, bagus banget. Ini gambar apa?"`, tag:'Hangat', fx:{trust:+8,flags:{childbond:true}}, next:'kaila_warm', ach:'childbond'},
+    {label:`Tersenyum canggung. "...bagus." Aku belum siap.`, tag:'Ragu', fx:{trust:-2}, next:'kaila_awk'}
+  ]},
+kaila_warm:{who:'kaila',speaker:'kaila',emo:'happy',
+  t:`"Ini keluarga!" katanya bangga. "Ada Mama, ada Papa Rafi, dan..." ia menatapku, "...boleh Kakak aku gambar juga?" Dadaku menghangat dan retak dalam waktu bersamaan.`,next:'act4_open'},
+kaila_awk:{who:'narration',speaker:'narration',emo:'neutral',mood:'sad',
+  t:`Kaila mengangguk kecil, lalu berlari kembali ke Adel. Aku sadar — apa pun keputusanku, ada anak kecil di ujungnya.`,next:'act4_open'},
+
+/* ---- ACT 4: menjaga jarak & merenung ---- */
+act4_open:{bg:'jalan',time:'dusk',weather:'clear',left:'jeki',who:'narration',speaker:'narration',emo:'neutral',mood:'sad',day:12,
+  t:`Minggu-minggu berikutnya, aku memilih menjaga jarak. Aku memakai waktu itu untuk bertanya pada diriku sendiri: sanggupkah aku menerima seluruh masa lalu Adel, beserta tanggung jawab yang menyertainya?`,next:'c_reflect1'},
+c_reflect1:{choice:true, prompt:`Sore itu, Rafi mengajakku menjemput Kaila dari sekolah. Aku...`,
+  options:[
+    {label:`Ikut. Bantu Rafi jadi ayah yang hadir.`, tag:'Peduli', fx:{friend:+8,trust:+3,flags:{helped:true}}, next:'reflect_help'},
+    {label:`Menolak halus. Aku butuh sendiri dulu.`, tag:'Menyendiri', fx:{friend:-2}, next:'reflect_alone'}
+  ]},
+reflect_help:{bg:'sekolah',time:'day',who:'rafi',speaker:'rafi',emo:'soft',left:'jeki',right:'rafi',mood:'warm',
+  t:`Di gerbang sekolah, Kaila berlari ke arah Rafi sambil tertawa. Rafi menoleh padaku. "Makasih, Jek. Aku belajar satu hal — marah nggak pernah jadi jalan keluar. Yang penting Kaila tumbuh dengan kasih sayang."`,next:'c_reflect2'},
+reflect_alone:{who:'jeki',speaker:'jeki',emo:'sad',left:'jeki',
+  t:`Aku berjalan pulang sendirian. Kadang menyendiri membantu berpikir. Kadang ia hanya memperbesar sepi.`,next:'c_reflect2'},
+c_reflect2:{bg:'rumah',time:'night',choice:true, prompt:`Malam harinya Adel mengirim pesan: "Boleh kita ngobrol jujur? Tanpa takut kehilangan."`,
+  options:[
+    {label:`"Boleh. Aku juga mau jujur sama diriku."`, tag:'Terbuka', fx:{trust:+7,flags:{opened:true}}, next:'reflect_open'},
+    {label:`"Belum. Aku belum menemukan jawabannya."`, tag:'Menunda', fx:{trust:-3}, next:'reflect_delay'}
+  ]},
+reflect_open:{who:'adel',speaker:'adel',emo:'soft',left:'adel',right:'jeki',mood:'hope',
+  t:`Kami bicara sampai larut — bukan tentang siapa yang salah, tapi tentang apa yang benar untuk semua orang, termasuk Kaila. Untuk pertama kalinya, aku merasa kami jujur.`,next:'finale_open'},
+reflect_delay:{who:'jeki',speaker:'jeki',emo:'sad',mood:'sad',
+  t:`Aku menutup ponsel tanpa membalas panjang. Jawaban tak bisa dipaksa datang. Tapi waktu juga tak menunggu selamanya.`,next:'finale_open'},
+
+/* ---- FINALE ---- */
+finale_open:{bg:'taman',time:'dusk',weather:'clear',left:'jeki',who:'narration',speaker:'narration',emo:'neutral',mood:'calm',day:20,
+  t:`Sebulan berlalu. Aku kembali ke taman tempat semuanya bermula — tempat langit jingga itu. Aku sudah cukup lama merenung. Sekarang, aku harus memilih.`,next:'finale_decide'},
+finale_decide:{finale:true, prompt:`Apa pun yang kupilih, kepentingan Kaila harus tetap jadi prioritas. Apa keputusanku?`,
+  options:[
+    {label:`Terima Adel dan Kaila sepenuh hati. Bangun keluarga bersama.`, tag:'Keluarga', need:{trust:66}, ending:'keluarga'},
+    {label:`Lanjutkan hubungan dengan Adel, hormati peran Rafi sebagai ayah.`, tag:'Bahagia', need:{trust:56}, ending:'bahagia'},
+    {label:`Mundur perlahan, biar Rafi & Adel bersatu kembali demi Kaila.`, tag:'Sahabat', need:{friend:62}, ending:'sahabat'},
+    {label:`Korbankan kebahagiaanku sendiri demi masa depan Kaila.`, tag:'Pengorbanan', need:{flags:['honest','childbond']}, ending:'pengorbanan'},
+    {label:`Akhiri dengan tenang. Berpisah baik-baik, tanpa dendam.`, tag:'Perpisahan', ending:'perpisahan'},
+    {label:`Pergi dengan marah. Putuskan semua kontak.`, tag:'Penyesalan', ending:'penyesalan'}
+  ]}
+};
+
+/* ---- ENDINGS ---- */
+const ENDINGS={
+  keluarga:{name:'Ending Keluarga', tag:'ENDING TERBAIK', mood:'hope', bg:'taman', time:'dusk',
+    left:'adel', right:'kaila',
+    desc:`Setahun kemudian, ruang tamu kecil kami penuh gambar Kaila di dinding. Aku tak menggantikan Rafi — aku berdiri di sampingnya. Kaila punya seorang ayah yang hadir, seorang ibu yang jujur, dan seseorang lagi yang memilih tinggal. Masa lalu tak bisa diubah, tapi kami membangun masa depan dengan kejujuran, tanggung jawab, dan saling menghormati. Keluarga, ternyata, bukan soal darah — tapi soal siapa yang memilih untuk tetap tinggal.`},
+  bahagia:{name:'Ending Bahagia', tag:'ENDING HANGAT', mood:'warm', bg:'taman', time:'dusk',
+    left:'jeki', right:'adel',
+    desc:`Aku dan Adel melanjutkan hubungan — kali ini di atas fondasi kejujuran. Rafi tetap menjadi ayah Kaila, hadir di setiap ulang tahun dan pentas sekolah, dan sahabatku sampai sekarang. Tidak semua kisah cinta harus sempurna untuk menjadi bahagia. Cukup jujur, cukup dewasa, cukup saling percaya.`},
+  sahabat:{name:'Ending Sahabat', tag:'ENDING PERSAHABATAN', mood:'warm', bg:'kafe', time:'dusk',
+    left:'jeki', right:'rafi',
+    desc:`Aku memilih mundur perlahan. Kulihat bagaimana mata Rafi menyala saat menggendong Kaila, dan aku tahu tempatku bukan di tengah mereka. Rafi dan Adel belajar memperbaiki apa yang dulu retak — demi Kaila. Rafi memelukku erat di gerbang kafe. "Kamu selalu jadi orang yang melihat apa yang nggak dilihat orang lain." Kadang mencintai seseorang berarti merelakan kebahagiaanmu jadi kebahagiaan orang lain.`},
+  pengorbanan:{name:'Ending Pengorbanan', tag:'ENDING MULIA', mood:'sad', bg:'jalan', time:'night',
+    left:'jeki',
+    desc:`Aku melangkah pergi diam-diam, ke kota lain, tanpa membuat siapa pun merasa bersalah. Aku menulis satu surat untuk Kaila, untuk dibuka saat ia dewasa: "Kadang orang dewasa membuat pilihan sulit supaya kamu tak perlu memilih." Aku mengorbankan bahagiaku agar keluarga kecil itu utuh. Tak ada yang tahu betapa beratnya. Tapi melihat Kaila tumbuh bahagia dari kejauhan, aku tahu aku memilih benar.`},
+  perpisahan:{name:'Ending Perpisahan', tag:'ENDING TENANG', mood:'sad', bg:'jalan', time:'dusk',
+    left:'jeki',
+    desc:`Kami berpisah baik-baik. Tanpa teriakan, tanpa dendam — hanya dua orang yang menyadari jalan mereka berbeda. Adel fokus pada Kaila. Rafi menjalankan perannya sebagai ayah. Dan aku melangkah maju, membawa satu pelajaran: yang menghancurkan kepercayaan bukan masa lalu seseorang, tapi kebohongannya. Beberapa hubungan berakhir bukan karena gagal, tapi karena keduanya memilih jujur.`},
+  penyesalan:{name:'Ending Penyesalan', tag:'ENDING PAHIT', mood:'sad', bg:'jalan', time:'night',
+    left:'jeki',
+    desc:`Aku pergi dengan amarah, memutus semua kontak. Kupikir itu akan melindungiku. Bertahun kemudian, aku melihat foto Kaila yang sudah besar di media sosial, tersenyum di antara Rafi dan Adel. Aku tak ada di sana. Kemarahan memang mudah, tapi ia membakar jembatan yang tak bisa dibangun ulang. Aku menyesal bukan karena kehilangan Adel — tapi karena membiarkan luka mengambil alih, dan lupa bahwa pernah ada persahabatan yang layak dijaga.`}
+};
+
+const ACH={
+  listener:'Pendengar yang Baik',
+  truthline:'Kata yang Jujur',
+  childbond:'Hati untuk Kaila',
+  ending:'Sebuah Akhir'
+};
+
+/* =========================================================================
+   ENGINE / UI
+   ========================================================================= */
+const el = id=>document.getElementById(id);
+const hud=el('hud'), dbox=el('dbox'), nameplate=el('nameplate'), dtext=el('dtext'),
+      choicesEl=el('choices'), chatEl=el('chat'), advEl=el('adv');
+let typing=false, typeTimer=null, fullText='', shownText='', waiting=false, curNode=null;
+const SPEED={fast:12, normal:26, slow:46};
+let speed='normal';
+const unlocked = { endings:{}, ach:{} };
+
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+
+function updateMeters(){
+  el('trustfill').style.width = Math.max(0,Math.min(100,G.trust))+'%';
+  el('friendfill').style.width = Math.max(0,Math.min(100,G.friend))+'%';
+  el('dayn').textContent=G.day;
+  el('locname').textContent=LOCNAME[stageState.bg]||'';
+}
+
+function setStageFromNode(n){
+  if(n.bg) stageState.bg=n.bg;
+  if(n.time) stageState.time=n.time;
+  stageState.weather = n.weather || (n.weather===undefined ? stageState.weather : 'clear');
+  if('weather' in n) stageState.weather=n.weather;
+  if('left' in n) stageState.left=n.left;
+  if('right' in n) stageState.right=n.right;
+  stageState.speaker = n.speaker || n.who || null;
+  // set emotions per side
+  const active=stageState.speaker;
+  const emo=n.emo||'neutral';
+  if(active===stageState.left) stageState.leftEmo=emo;
+  else if(active===stageState.right) stageState.rightEmo=emo;
+  if(n.who && CHARS[n.who]){ if(n.who===stageState.left) stageState.leftEmo=emo; if(n.who===stageState.right) stageState.rightEmo=emo; }
+  if(n.mood) setMood(n.mood);
+  if(n.day) G.day=n.day;
+  updateMeters();
+}
+
+function speakerLabel(n){
+  if(!n.who || n.who==='narration') return 'Narator';
+  return (CHARS[n.who]||{}).name || 'Narator';
+}
+
+function typeOut(text, isNar){
+  clearInterval(typeTimer); typing=true; shownText=''; fullText=text; advEl.style.display='none';
+  let i=0; const cls=isNar?'nar':'';
+  typeTimer=setInterval(()=>{
+    if(i>=fullText.length){ clearInterval(typeTimer); typing=false; advEl.style.display='block'; return; }
+    shownText+=fullText[i++];
+    dtext.innerHTML = cls?('<span class="nar">'+escapeHtml(shownText)+'</span>'):escapeHtml(shownText);
+  }, SPEED[speed]);
+}
+function finishTyping(){ if(!typing) return; clearInterval(typeTimer); typing=false; shownText=fullText;
+  const isNar=(curNode&&(curNode.who==='narration'||curNode.speaker==='narration'));
+  dtext.innerHTML = isNar?('<span class="nar">'+escapeHtml(fullText)+'</span>'):escapeHtml(fullText);
+  advEl.style.display='block';
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function goto(id){
+  const n=S[id]; if(!n){ console.warn('missing node',id); return; }
+  curNode=n; G.node=id;
+  choicesEl.style.display='none'; chatEl.style.display='none';
+  dbox.classList.remove('hidden'); hud.classList.remove('hidden');
+
+  if(n.chat){ showChat(n); return; }
+  if(n.choice || n.finale){ setStageFromNode(n); presentChoices(n); return; }
+
+  setStageFromNode(n);
+  nameplate.textContent = speakerLabel(n);
+  const isNar=(n.who==='narration'||n.speaker==='narration');
+  nameplate.style.color = isNar? '#c9bcd8' : (CHARS[n.who]? CHARS[n.who].accent : '#c9bcd8');
+  waiting=true;
+  typeOut(n.t, isNar);
+  G.history.push({name:speakerLabel(n), t:n.t});
+  if(G.history.length>60) G.history.shift();
+}
+
+function advance(){
+  if(!curNode) return;
+  if(typing){ finishTyping(); return; }
+  if(curNode.chat || curNode.choice || curNode.finale) return;
+  if(curNode.next){ goto(curNode.next); }
+}
+
+/* ---- choices ---- */
+function presentChoices(n){
+  dbox.classList.add('hidden');
+  choicesEl.innerHTML='';
+  if(n.prompt){ const p=document.createElement('div'); p.style.cssText='color:#e5dcef;font-size:14px;margin-bottom:8px;text-align:center;max-width:600px;text-shadow:0 2px 4px #000'; p.textContent=n.prompt; choicesEl.appendChild(p); }
+  n.options.forEach(op=>{
+    const b=document.createElement('div'); b.className='choice';
+    let locked=false, reason='';
+    if(op.need){
+      if(op.need.trust!==undefined && G.trust<op.need.trust){ locked=true; reason='Kepercayaan '+op.need.trust+'+'; }
+      if(op.need.friend!==undefined && G.friend<op.need.friend){ locked=true; reason='Persahabatan '+op.need.friend+'+'; }
+      if(op.need.flags){ for(const f of op.need.flags){ if(!G.flags[f]){ locked=true; reason='Butuh ikatan lebih dalam'; } } }
+    }
+    const tag = op.tag? '<span class="tag">'+op.tag+(locked?' · 🔒 '+reason:'')+'</span>' : '';
+    b.innerHTML = '<span style="flex:1">'+escapeHtml(op.label)+'</span>'+tag;
+    if(locked){ b.classList.add('locked'); }
+    else{
+      b.onclick=()=>{
+        if(op.fx) applyFx(op.fx);
+        if(op.ach) unlockAch(op.ach);
+        if(n.finale || op.ending){ runEnding(op.ending); return; }
+        goto(op.next);
+      };
+    }
+    choicesEl.appendChild(b);
+  });
+  choicesEl.style.display='flex';
+}
+function applyFx(fx){
+  if(fx.trust) G.trust=Math.max(0,Math.min(100,G.trust+fx.trust));
+  if(fx.friend) G.friend=Math.max(0,Math.min(100,G.friend+fx.friend));
+  if(fx.flags) Object.assign(G.flags,fx.flags);
+  updateMeters();
+  // brief feedback
+  const parts=[];
+  if(fx.trust) parts.push('Kepercayaan '+(fx.trust>0?'+':'')+fx.trust);
+  if(fx.friend) parts.push('Persahabatan '+(fx.friend>0?'+':'')+fx.friend);
+  if(parts.length) toast(parts.join('   '));
+}
+
+/* ---- chat ---- */
+function showChat(n){
+  dbox.classList.add('hidden'); hud.classList.add('hidden');
+  el('chathead').textContent=n.head||'Pesan';
+  const logC=el('chatlog'); logC.innerHTML=''; chatEl.style.display='flex';
+  let i=0;
+  function push(){
+    if(i>=n.log.length){ setTimeout(()=>{ chatEl.style.display='none'; hud.classList.remove('hidden'); goto(n.next); }, 900); return; }
+    const m=n.log[i++]; const b=document.createElement('div'); b.className='bubble '+m.who;
+    b.innerHTML='<div class="snd">'+m.name+'</div>'+escapeHtml(m.t);
+    logC.appendChild(b); logC.scrollTop=logC.scrollHeight;
+    setTimeout(push, 850+Math.random()*400);
+  }
+  push();
+}
+
+/* ---- endings ---- */
+function unlockAch(k){ if(unlocked.ach[k]) return; unlocked.ach[k]=true; toast('Pencapaian: '+(ACH[k]||k)); }
+function runEnding(key){
+  const e=ENDINGS[key]; if(!e) return;
+  unlocked.endings[key]=true; unlockAch('ending');
+  setMood(e.mood);
+  // set final tableau
+  stageState.bg=e.bg; stageState.time=e.time; stageState.weather=(key==='penyesalan'||key==='pengorbanan')?'rain':'clear';
+  stageState.left=e.left||null; stageState.right=e.right||null;
+  stageState.speaker=null;
+  stageState.leftEmo = (key==='keluarga'||key==='bahagia'||key==='sahabat')?'happy':(key==='pengorbanan'?'sad':'sad');
+  stageState.rightEmo = (key==='keluarga'||key==='bahagia')?'happy':'soft';
+  // fade then show card
+  const fade=el('fade'); fade.style.opacity='1';
+  setTimeout(()=>{
+    dbox.classList.add('hidden'); choicesEl.style.display='none'; hud.classList.add('hidden');
+    fade.style.opacity='0';
+    el('endtag').textContent=e.tag;
+    el('endtitle').textContent=e.name;
+    el('enddesc').textContent=e.desc;
+    el('endingcard').classList.remove('hidden');
+  }, 650);
+}
+
+/* ---- gallery ---- */
+const ENDING_ORDER=['keluarga','bahagia','sahabat','pengorbanan','perpisahan','penyesalan'];
+function renderGallery(){
+  const g=el('galgrid'); g.innerHTML='';
+  ENDING_ORDER.forEach(k=>{ const e=ENDINGS[k]; const got=unlocked.endings[k];
+    const c=document.createElement('div'); c.className='galcard'+(got?'':' locked');
+    c.innerHTML='<b>'+(got?e.name:'???')+'</b>'+(got? '<div style="font-size:11px;line-height:1.5;color:#d8cfe6">'+e.desc.slice(0,120)+'…</div>' : '<div style="font-size:11px;color:#8a7c9a">Belum terbuka. Buat pilihan berbeda untuk menemukannya.</div>');
+    g.appendChild(c);
+  });
+}
+
+/* ---- navigation between screens ---- */
+function hideScreens(){ ['titlescreen','setscreen','logscreen','galscreen','howscreen','endingcard'].forEach(id=>el(id).classList.add('hidden')); }
+function showScreen(id){ el(id).classList.remove('hidden'); }
+
+/* ---- start / new game ---- */
+function newGame(plus){
+  hideScreens();
+  G.trust=50; G.friend=50; G.day=1; G.flags={}; G.history=[];
+  if(plus){ G.trust=58; G.friend=58; toast('New Game+ : awal yang lebih matang'); }
+  stageState.left=null; stageState.right=null; stageState.leftEmo='neutral'; stageState.rightEmo='neutral';
+  updateMeters();
+  goto('intro1');
+}
+
+/* =========================================================================
+   EVENTS
+   ========================================================================= */
+// advance on stage tap (not on choices / screens / buttons)
+el('stage').addEventListener('click',(e)=>{
+  const onUI = e.target.closest('#choices,#chat,.screen,.iconbtn,#daychip,.btn,.choice,.seg');
+  const screensOpen = ['titlescreen','setscreen','logscreen','galscreen','howscreen','endingcard'].some(id=>!el(id).classList.contains('hidden'));
+  if(onUI||screensOpen) return;
+  advance();
+});
+document.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){ const so=['titlescreen','setscreen','logscreen','galscreen','howscreen','endingcard'].some(id=>!el(id).classList.contains('hidden')); if(!so){e.preventDefault();advance();} } });
+
+// title buttons
+el('btnnew').onclick=()=>{ initAudio(); if(AC&&AC.state==='suspended')AC.resume(); startMusicClock(); setMusic(musicOn); newGame(false); };
+el('btngal').onclick=()=>{ renderGallery(); showScreen('galscreen'); };
+el('btnhow').onclick=()=>showScreen('howscreen');
+el('howBack').onclick=()=>{ hideScreens(); if(G.node==='intro1'&&!curNode) showScreen('titlescreen'); else if(!curNode) showScreen('titlescreen'); };
+el('galBack').onclick=()=>{ hideScreens(); showScreen('titlescreen'); };
+
+// hud buttons
+el('btnset').onclick=()=>showScreen('setscreen');
+el('btnlog').onclick=()=>{ const b=el('logbody'); b.innerHTML=G.history.slice(-14).map(h=>'<div style="margin-bottom:9px"><b style="color:var(--amber);font-size:11px">'+h.name+'</b><br>'+escapeHtml(h.t)+'</div>').join(''); showScreen('logscreen'); };
+el('logBack').onclick=()=>hideScreens();
+el('setBack').onclick=()=>hideScreens();
+el('setTitle').onclick=()=>{ hideScreens(); curNode=null; hud.classList.add('hidden'); dbox.classList.add('hidden'); showScreen('titlescreen'); };
+
+// settings segments
+el('segMusic').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; [...el('segMusic').children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); musicOn=b.dataset.v==='1'; initAudio(); if(AC&&AC.state==='suspended')AC.resume(); startMusicClock(); setMusic(musicOn); });
+el('segSpeed').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; [...el('segSpeed').children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); speed=b.dataset.v; });
+
+// ending card buttons
+el('endGal').onclick=()=>{ hideScreens(); renderGallery(); showScreen('galscreen'); };
+el('endNGplus').onclick=()=>{ initAudio(); if(AC&&AC.state==='suspended')AC.resume(); startMusicClock(); setMusic(musicOn); newGame(true); };
+el('endTitle').onclick=()=>{ hideScreens(); curNode=null; hud.classList.add('hidden'); dbox.classList.add('hidden'); showScreen('titlescreen'); };
+
+updateMeters();
+</script>
+</body>
+</html>
